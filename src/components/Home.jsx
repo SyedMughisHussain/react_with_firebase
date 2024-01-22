@@ -1,20 +1,31 @@
 import React, { useEffect, useRef, useState } from "react";
 import { db } from "../config/firebase_config";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  deleteDoc,
+  updateDoc,
+} from "firebase/firestore";
 
 const Home = () => {
   const todoText = useRef();
   const [todos, setTodos] = useState([]);
-
   useEffect(() => {
     renderTodo();
   }, []);
 
   const renderTodo = async () => {
+    setTodos([]);
     const querySnapshot = await getDocs(collection(db, "todos"));
     querySnapshot.forEach((doc) => {
       // doc.data() is never undefined for query doc snapshots
-      todos.push(doc.data(), {docId: doc.id});
+      const obj = {
+        ...doc.data(),
+        docId: doc.id,
+      };
+      todos.push(obj);
       setTodos([...todos]);
       console.log(doc.id, " => ", doc.data());
     });
@@ -32,13 +43,18 @@ const Home = () => {
     todoText.current.value = "";
   };
 
-  const editTodo = (index) => {
+  const editTodo = async (index) => {
     const newValue = prompt("Enter the new value to enter.", todos[index].todo);
+    const todoRef = doc(db, "todos", todos[index].docId);
+    await updateDoc(todoRef, {
+      todo: newValue,
+    });
     todos[index].todo = newValue;
     setTodos([...todos]);
   };
 
-  const deleteTodo = (index) => {
+  const deleteTodo = async (index) => {
+    await deleteDoc(doc(db, "todos", todos[index].docId));
     todos.splice(index, 1);
     setTodos([...todos]);
   };
@@ -54,37 +70,42 @@ const Home = () => {
             type="text"
             ref={todoText}
             placeholder="Add Todo"
+            required
           />
           <button className="ml-5 bg-purple-500 text-white p-2 ">Add</button>
         </form>
-        {todos.map((item, index) => {
-          return (
-            <div
-              className="flex bg-white justify-between p-2 mt-2 w-[450px]"
-              key={index}
-            >
-              <p className="text-[18px]">{item.todo}</p>
-              <div>
-                <button
-                  onClick={() => {
-                    editTodo(index);
-                  }}
-                  className="bg-green-600 p-1 text-white rounded-md"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => {
-                    deleteTodo(index);
-                  }}
-                  className="bg-red-500 ml-2 p-1 text-white rounded-md"
-                >
-                  Delete
-                </button>
+        {todos.length === 0 ? (
+          <h1 className="text-center text-2xl mt-5">No Todo Added Yet...</h1>
+        ) : (
+          todos.map((item, index) => {
+            return (
+              <div
+                className="flex bg-white justify-between p-2 mt-2 w-[450px]"
+                key={index}
+              >
+                <p className="text-[18px]">{item.todo}</p>
+                <div>
+                  <button
+                    onClick={() => {
+                      editTodo(index);
+                    }}
+                    className="bg-green-600 p-1 text-white rounded-md"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => {
+                      deleteTodo(index);
+                    }}
+                    className="bg-red-500 ml-2 p-1 text-white rounded-md"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
